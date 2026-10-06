@@ -1,0 +1,17 @@
+# STM32CubeIDE / Eclipse
+Debug/
+Release/
+.metadata/
+.settings/
+*.launch
+
+# Artefactos de compilación
+*.o
+*.d
+*.elf
+*.map
+*.list
+*.bin
+*.hex
+*.su
+*.cyclo
