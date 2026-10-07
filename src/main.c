@@ -2,12 +2,15 @@
  * @file    main.c
  * @brief   Prueba de concepto: lectura continua del ADXL345 por SPI2.
  *
- * Mientras no exista la salida por SWO, las lecturas se ven en el
- * depurador con Live Expressions (variables 'accel', 'lecturas', 'errores').
+ * Las lecturas salen por SWO con printf (consola SWV del depurador). Las
+ * variables 'accel', 'lecturas', 'errores' y 'estado' siguen disponibles
+ * para verlas con Live Expressions.
  */
 
 #include <stdint.h>
+#include <stdio.h>
 #include "adxl345.h"
+#include "swo.h"
 
 /* Pausa entre lecturas. Es un retardo por software: a 16 MHz cada vuelta
  * toma unos pocos ciclos, así que 400000 vueltas son del orden de 100 ms. */
@@ -27,15 +30,32 @@ static void Delay(uint32_t loops)
     }
 }
 
+/* Nombre del estado para mostrarlo en la consola */
+static const char *EstadoTexto(ADXL345_Status_t s)
+{
+    switch (s) {
+        case ADXL345_OK:         return "OK";
+        case ADXL345_ERR_SPI:    return "ERR_SPI (tiempo de espera del bus)";
+        case ADXL345_ERR_ID:     return "ERR_ID (sensor ausente o mal cableado)";
+        case ADXL345_ERR_CONFIG: return "ERR_CONFIG (sensor desconectado o reiniciado)";
+        default:                 return "desconocido";
+    }
+}
+
 int main(void)
 {
     ADXL345_Accel_t muestra;
 
+    SWO_Init();
+    printf("Reto 3 - SPI: buscando el ADXL345...\n");
+
     /* Reintenta hasta encontrar el sensor (útil si se conecta tarde) */
     while ((estado = ADXL345_Init()) != ADXL345_OK) {
         errores++;
+        printf("Init: %s\n", EstadoTexto(estado));
         Delay(DELAY_LOOPS);
     }
+    printf("ADXL345 listo: +/-16 g, 3.9 mg por LSB\n");
 
     for (;;) {
         estado = ADXL345_ReadAccel(&muestra);
@@ -43,11 +63,14 @@ int main(void)
         if (estado == ADXL345_OK) {
             accel = muestra;
             lecturas++;
+            printf("X=%6d  Y=%6d  Z=%6d  mg\n",
+                   muestra.x_mg, muestra.y_mg, muestra.z_mg);
         } else {
             /* Error de bus o sensor desconectado/reiniciado: se reinician
              * SPI y sensor. Si el sensor no está, Init falla y se vuelve a
              * intentar en la siguiente vuelta hasta que aparezca. */
             errores++;
+            printf("Lectura: %s. Reiniciando sensor...\n", EstadoTexto(estado));
             (void)ADXL345_Init();
         }
 
