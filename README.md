@@ -39,12 +39,44 @@ tags:
 
 | Etapa | Responsable | Estado |
 |-------|-------------|--------|
-| 1. Bajo nivel (registros) | Marco | Pendiente |
-| 2. Alto nivel (API y sensor) | Gildardo | Pendiente |
+| 1. Bajo nivel (registros) | Marco | Completada |
+| 2. Alto nivel (API y sensor) | Gildardo | En revisión |
 | 3. Visualización por SWO | Marco | Pendiente |
-| 4. Fundamentos teóricos | Gildardo | En curso |
+| 4. Fundamentos teóricos | Gildardo | Primera versión |
 
 Flujo de trabajo: una rama por etapa, Pull Request a `main` y revisión del otro integrante antes del merge.
+
+---
+
+## Arquitectura y guía de la API
+
+```
+main.c        Aplicación: lee el sensor en un ciclo
+adxl345.c/.h  Driver del sensor (registros del ADXL345, escala a mg)
+drv_spi.c/.h  API pública SPI (tramas completas con CS)
+ll_spi.c/.h   Bajo nivel: registros de RCC, GPIOB y SPI2
+```
+
+Cada capa solo llama a la inmediatamente inferior; solo `ll_spi.c` toca registros.
+
+### drv_spi.h
+
+| Función | Descripción |
+|---------|-------------|
+| `void SPI_Init(void)` | SPI2 maestro, modo 3, 1 MHz, CS en alto. Llamarla de nuevo reinicia el periférico |
+| `SPI_Status_t SPI_WriteRegister(uint8_t cmd, uint8_t value)` | Trama de 2 bytes: comando y valor |
+| `SPI_Status_t SPI_ReadRegisters(uint8_t cmd, uint8_t *buffer, uint8_t length)` | Envía el comando y lee `length` bytes en la misma trama |
+
+Devuelven `SPI_OK` o `SPI_ERROR` (venció un tiempo de espera o los parámetros no son válidos).
+
+### adxl345.h
+
+| Función | Descripción |
+|---------|-------------|
+| `ADXL345_Status_t ADXL345_Init(void)` | Inicializa el SPI, verifica `DEVID = 0xE5`, configura ±16 g con resolución completa y activa la medición |
+| `ADXL345_Status_t ADXL345_ReadAccel(ADXL345_Accel_t *accel)` | Lee X, Y y Z de una misma muestra, en mg |
+
+Devuelven `ADXL345_OK`, `ADXL345_ERR_SPI` o `ADXL345_ERR_ID` (sensor ausente o mal cableado).
 
 ---
 
