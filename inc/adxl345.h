@@ -17,7 +17,9 @@
 typedef enum {
     ADXL345_OK      = 0,   /* Operación correcta                              */
     ADXL345_ERR_SPI = 1,   /* Falló la comunicación SPI (tiempo de espera)    */
-    ADXL345_ERR_ID  = 2    /* DEVID no es 0xE5: sensor ausente o mal cableado */
+    ADXL345_ERR_ID  = 2,   /* DEVID no es 0xE5: sensor ausente o mal cableado */
+    ADXL345_ERR_CONFIG = 3 /* La configuración se perdió: sensor desconectado
+                              o reiniciado. Se recupera con ADXL345_Init()    */
 } ADXL345_Status_t;
 
 /* Aceleración en los tres ejes, en miligravedades (1000 mg = 1 g) */
@@ -35,9 +37,11 @@ typedef struct {
 ADXL345_Status_t ADXL345_Init(void);
 
 /**
- * @brief  Lee los tres ejes de una misma muestra.
+ * @brief  Lee los tres ejes de una misma muestra y verifica, en la misma
+ *         trama, que el sensor conserve su configuración.
  * @param  accel  Destino de la lectura en mg.
- * @return ADXL345_OK o ADXL345_ERR_SPI. Si hay error, 'accel' no cambia.
+ * @return ADXL345_OK, ADXL345_ERR_SPI o ADXL345_ERR_CONFIG.
+ *         Si hay error, 'accel' no cambia.
  */
 ADXL345_Status_t ADXL345_ReadAccel(ADXL345_Accel_t *accel);
 
