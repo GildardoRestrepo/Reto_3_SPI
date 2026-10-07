@@ -74,9 +74,9 @@ Devuelven `SPI_OK` o `SPI_ERROR` (venció un tiempo de espera o los parámetros 
 | Función | Descripción |
 |---------|-------------|
 | `ADXL345_Status_t ADXL345_Init(void)` | Inicializa el SPI, verifica `DEVID = 0xE5`, configura ±16 g con resolución completa y activa la medición |
-| `ADXL345_Status_t ADXL345_ReadAccel(ADXL345_Accel_t *accel)` | Lee X, Y y Z de una misma muestra, en mg |
+| `ADXL345_Status_t ADXL345_ReadAccel(ADXL345_Accel_t *accel)` | Lee X, Y y Z de una misma muestra, en mg, y verifica en la misma trama que el sensor siga configurado |
 
-Devuelven `ADXL345_OK`, `ADXL345_ERR_SPI` o `ADXL345_ERR_ID` (sensor ausente o mal cableado).
+Devuelven `ADXL345_OK`, `ADXL345_ERR_SPI` (venció un tiempo de espera), `ADXL345_ERR_ID` (sensor ausente o mal cableado al iniciar) o `ADXL345_ERR_CONFIG` (el sensor se desconectó o se reinició; se recupera llamando de nuevo a `ADXL345_Init`).
 
 ---
 

@@ -19,8 +19,8 @@
 
 #define ADXL345_REG_DEVID        0x00U   /* Identificador fijo                */
 #define ADXL345_REG_POWER_CTL    0x2DU   /* Modo de energía                   */
-#define ADXL345_REG_DATA_FORMAT  0x31U   /* Rango y resolución                */
-#define ADXL345_REG_DATAX0       0x32U   /* Primero de los 6 bytes de datos   */
+#define ADXL345_REG_DATA_FORMAT  0x31U   /* Rango y resolución. Le siguen los */
+                                         /* 6 bytes de datos (0x32 a 0x37)    */
 
 #define ADXL345_DEVID_VALUE      0xE5U
 
@@ -32,6 +32,7 @@
 #define ADXL345_POWER_MEASURE    0x08U   /* POWER_CTL bit 3: modo medición    */
 #define ADXL345_FORMAT_FULL_RES  0x08U   /* DATA_FORMAT bit 3: 3,9 mg/LSB     */
 #define ADXL345_FORMAT_RANGE_16G 0x03U   /* DATA_FORMAT bits 1:0 = 11: ±16 g  */
+#define ADXL345_FORMAT_VALUE     (ADXL345_FORMAT_FULL_RES | ADXL345_FORMAT_RANGE_16G)
 
 /* Escala en resolución completa: 256 LSB por g -> mg = raw * 1000 / 256 */
 #define ADXL345_LSB_PER_G        256L
@@ -89,8 +90,7 @@ ADXL345_Status_t ADXL345_Init(void)
 
     /* 2. Formato: resolución completa y ±16 g. El bit SPI queda en 0
      *    (4 hilos) y el dato justificado a la derecha. */
-    if (ADXL345_Write(ADXL345_REG_DATA_FORMAT,
-                      ADXL345_FORMAT_FULL_RES | ADXL345_FORMAT_RANGE_16G)
+    if (ADXL345_Write(ADXL345_REG_DATA_FORMAT, ADXL345_FORMAT_VALUE)
         != ADXL345_OK) {
         return ADXL345_ERR_SPI;
     }
@@ -102,21 +102,30 @@ ADXL345_Status_t ADXL345_Init(void)
 
 ADXL345_Status_t ADXL345_ReadAccel(ADXL345_Accel_t *accel)
 {
-    uint8_t data[6];   /* X0 X1 Y0 Y1 Z0 Z1 */
+    uint8_t data[7];   /* DATA_FORMAT X0 X1 Y0 Y1 Z0 Z1 */
 
     if (accel == NULL) {
         return ADXL345_ERR_SPI;
     }
 
-    /* Los 6 bytes en una sola trama: así los tres ejes son de la misma
-     * muestra (la hoja de datos lo recomienda). */
-    if (ADXL345_Read(ADXL345_REG_DATAX0, data, 6U) != ADXL345_OK) {
+    /* Los 6 bytes de datos en una sola trama: así los tres ejes son de la
+     * misma muestra (la hoja de datos lo recomienda). La trama arranca un
+     * registro antes, en DATA_FORMAT, para comprobar que el sensor sigue
+     * ahí y configurado: SPI no tiene ACK, así que esa es la única forma
+     * de notar una desconexión. */
+    if (ADXL345_Read(ADXL345_REG_DATA_FORMAT, data, 7U) != ADXL345_OK) {
         return ADXL345_ERR_SPI;
     }
 
-    accel->x_mg = ADXL345_ToMg(data[0], data[1]);
-    accel->y_mg = ADXL345_ToMg(data[2], data[3]);
-    accel->z_mg = ADXL345_ToMg(data[4], data[5]);
+    /* 0xFF: MISO suelto (el pull-up), el sensor no está.
+     * 0x00: el sensor perdió la alimentación y volvió en reposo. */
+    if (data[0] != ADXL345_FORMAT_VALUE) {
+        return ADXL345_ERR_CONFIG;
+    }
+
+    accel->x_mg = ADXL345_ToMg(data[1], data[2]);
+    accel->y_mg = ADXL345_ToMg(data[3], data[4]);
+    accel->z_mg = ADXL345_ToMg(data[5], data[6]);
 
     return ADXL345_OK;
 }

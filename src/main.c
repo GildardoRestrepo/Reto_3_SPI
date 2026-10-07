@@ -44,7 +44,9 @@ int main(void)
             accel = muestra;
             lecturas++;
         } else {
-            /* Un error de bus se recupera reiniciando SPI y sensor */
+            /* Error de bus o sensor desconectado/reiniciado: se reinician
+             * SPI y sensor. Si el sensor no está, Init falla y se vuelve a
+             * intentar en la siguiente vuelta hasta que aparezca. */
             errores++;
             (void)ADXL345_Init();
         }
